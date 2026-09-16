@@ -1,93 +1,85 @@
 # AI 搜题 APP
 
-Android 原生应用，通过拍照识别题目并调用多模态大模型进行解答。
+基于 Android + Kotlin + Jetpack Compose 开发的 AI 搜题应用，支持拍照识别题目并通过多模态大模型解答。
 
 ## 功能特性
 
-- 📷 拍照或从相册选择题目图片
-- 🤖 支持任意 OpenAI 兼容接口的多模态模型
-- 🔧 自定义 API Key 和 Base URL
-- 📝 详细的解题步骤展示
-- 🧮 LaTeX 数学公式渲染
-- 📚 本地历史记录
-- 🌙 暗色模式支持
+- 📸 **图片识别**：支持相机拍照或相册选图
+- 🤖 **AI 解答**：调用多模态大模型（支持 OpenAI 兼容接口）
+- ⚙️ **灵活配置**：自定义 API Base URL、API Key 和模型名称
+- 🎨 **现代 UI**：基于 Material Design 3 和 Jetpack Compose
 
 ## 技术栈
 
-- **语言**：Kotlin
-- **架构**：MVVM
-- **网络**：Retrofit + OkHttp
-- **数据库**：Room
-- **相机**：CameraX
-- **图片处理**：Glide
-
-## 快速开始
-
-### 环境要求
-
-- Android Studio Hedgehog | 2023.1.1 或更高版本
-- JDK 17
-- Android SDK API 24+（最低支持 Android 7.0）
-
-### 构建项目
-
-```bash
-git clone https://github.com/your-username/ai-question-solver.git
-cd ai-question-solver
-./gradlew build
-```
-
-### 配置 API
-
-首次启动应用后，进入设置页面配置：
-
-- **Base URL**：API 端点地址（例如 `https://api.openai.com`）
-- **API Key**：你的 API 密钥
-- **Model**：模型名称（例如 `gpt-4-vision-preview`）
-
-支持的模型提供商：
-- OpenAI (GPT-4V)
-- Anthropic Claude (通过兼容接口)
-- Google Gemini Pro Vision
-- 国内厂商（通义千问、文心一言等）
+- **开发语言**：Kotlin
+- **UI 框架**：Jetpack Compose + Material Design 3
+- **架构模式**：MVVM + Repository
+- **网络请求**：Retrofit + OkHttp
+- **数据持久化**：DataStore Preferences
+- **图片加载**：Coil
+- **最低版本**：Android 7.0 (API 24)
 
 ## 项目结构
 
 ```
-app/
-├── data/              # 数据层
-│   ├── api/          # API 接口定义
-│   ├── model/        # 数据模型
-│   ├── repository/   # 数据仓库
-│   └── local/        # 本地存储
-├── ui/               # UI 层
-│   ├── camera/       # 拍照模块
-│   ├── answer/       # 答案展示
-│   ├── history/      # 历史记录
-│   └── settings/     # 设置
-└── util/             # 工具类
+app/src/main/java/com/lilinth/questionsolver/
+├── data/
+│   ├── model/          # 数据模型
+│   ├── repository/     # 数据仓库
+│   └── api/            # API 接口定义
+├── ui/
+│   ├── screen/         # 屏幕页面
+│   ├── viewmodel/      # ViewModel
+│   └── theme/          # 主题配置
+└── MainActivity.kt     # 主 Activity
 ```
 
 ## 开发计划
 
-- [x] 项目初始化
-- [ ] API 调用模块
-- [ ] 相机功能
-- [ ] 图片处理
-- [ ] 答案展示
-- [ ] 历史记录
-- [ ] 设置页面
-- [ ] LaTeX 渲染
-- [ ] 单元测试
+### MVP 版本 (v1.0.0)
+- [x] 项目架构搭建
+- [ ] 图片选择功能
+- [ ] API 配置管理
+- [ ] 多模态大模型调用
+- [ ] 答案展示（纯文本）
 
-## 贡献
+### 后续版本
+- [ ] 数学公式渲染（LaTeX/MathML）
+- [ ] 历史记录功能
+- [ ] 答案复制和分享
+- [ ] 拍照功能（CameraX）
+- [ ] 图片裁剪和旋转
+- [ ] 深色/浅色主题切换
 
-欢迎提交 Issue 和 Pull Request！
+## 构建说明
 
-## 许可证
+1. 克隆项目
+```bash
+git clone https://github.com/Lilinth07/ai-question-solver.git
+cd ai-question-solver
+```
+
+2. 使用 Android Studio 打开项目
+
+3. 同步 Gradle 依赖
+
+4. 运行到设备或模拟器
+
+## 使用说明
+
+1. 首次打开应用，进入设置页面配置 API 信息
+2. 填写 API Base URL、API Key 和模型名称
+3. 返回主页，选择图片或拍照
+4. 点击"开始解答"，等待 AI 返回答案
+
+## API 兼容性
+
+支持任何 OpenAI 兼容格式的 API，包括：
+- OpenAI GPT-4V
+- Azure OpenAI
+- Claude (通过转换)
+- 国内大模型平台（如智谱、百度等）
+
+## License
 
 MIT License
-
-## 联系方式
-
-如有问题或建议，请提交 Issue。
