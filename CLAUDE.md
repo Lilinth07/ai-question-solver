@@ -12,25 +12,49 @@ Android 原生应用，通过拍照识别题目并调用多模态大模型进行
 - CameraX（相机调用）
 - Retrofit + OkHttp（网络请求）
 - Room（本地数据库）
-- Jetpack Compose / XML（UI，待确认）
+- Jetpack Compose（UI 框架）
+
+**MVP 范围**：
+- 拍照/相册选图
+- API 调用与答案展示
+- 基础设置（API 配置）
+- 暂不包含：历史记录、LaTeX 渲染、离线缓存
 
 ## 架构设计
 
-### 模块划分
+### MVP 架构
+采用 MVVM + Repository 模式：
+- **UI 层**：Jetpack Compose（声明式 UI，减少样板代码）
+- **ViewModel 层**：处理 UI 逻辑和状态管理
+- **Repository 层**：统一数据来源（API + 本地配置）
+- **Data 层**：Retrofit API + DataStore（配置持久化）
+
+### 模块划分（MVP 精简版）
 ```
 app/
-├── data/              # 数据层
-│   ├── api/          # API 接口定义
-│   ├── model/        # 数据模型
-│   ├── repository/   # 数据仓库
-│   └── local/        # 本地存储
-├── domain/           # 业务逻辑层（可选）
-├── ui/               # UI 层
-│   ├── camera/       # 拍照模块
-│   ├── answer/       # 答案展示
-│   ├── history/      # 历史记录
-│   └── settings/     # 设置（API 配置）
-└── util/             # 工具类
+├── data/
+│   ├── api/
+│   │   ├── OpenAIApi.kt              # Retrofit 接口定义
+│   │   └── model/                     # API 请求/响应模型
+│   ├── repository/
+│   │   ├── QuestionRepository.kt     # 题目解答仓库
+│   │   └── SettingsRepository.kt     # 配置仓库
+│   └── local/
+│       └── UserPreferences.kt        # DataStore 配置
+├── ui/
+│   ├── camera/
+│   │   ├── CameraScreen.kt           # 拍照界面
+│   │   └── CameraViewModel.kt
+│   ├── answer/
+│   │   ├── AnswerScreen.kt           # 答案展示
+│   │   └── AnswerViewModel.kt
+│   └── settings/
+│       ├── SettingsScreen.kt         # API 配置
+│       └── SettingsViewModel.kt
+├── util/
+│   ├── ImageProcessor.kt             # 图片压缩/Base64
+│   └── NetworkResult.kt              # 网络结果封装
+└── MainActivity.kt                    # Compose 导航
 ```
 
 ### 数据流
@@ -98,51 +122,66 @@ Body:
 - 步骤分解展示
 - 支持复制答案
 
-### 3. 历史记录
-- 本地 Room 数据库
-- 字段：题目图片路径、答案文本、时间戳、模型名称
-- 支持搜索和删除
-
-### 4. 用户体验
+### 3. 用户体验（MVP 简化版）
 - 加载动画（API 调用需要几秒）
-- 错误处理：网络超时、API 密钥无效、余额不足、图片不清晰等
+- 错误处理：网络超时、API 密钥无效、余额不足等
 - 离线提示
 - 暗色模式适配
 
-## 依赖库
+## MVP 开发计划
+
+## 技术选型细节
+
+### 最低 Android 版本
+- **minSdk**: 24 (Android 7.0) - 覆盖 95%+ 设备
+- **targetSdk**: 34 (Android 14)
+- **compileSdk**: 34
+
+### 核心依赖库（MVP 版本）
 
 ```gradle
 dependencies {
     // Kotlin
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.20"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.22"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
+    
+    // Jetpack Compose
+    implementation platform("androidx.compose:compose-bom:2024.02.00")
+    implementation "androidx.compose.ui:ui"
+    implementation "androidx.compose.ui:ui-tooling-preview"
+    implementation "androidx.compose.material3:material3"
+    implementation "androidx.activity:activity-compose:1.8.2"
+    implementation "androidx.navigation:navigation-compose:2.7.6"
+    
+    // ViewModel & Lifecycle
+    implementation "androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0"
+    implementation "androidx.lifecycle:lifecycle-runtime-compose:2.7.0"
     
     // 网络
     implementation "com.squareup.retrofit2:retrofit:2.9.0"
     implementation "com.squareup.retrofit2:converter-gson:2.9.0"
     implementation "com.squareup.okhttp3:logging-interceptor:4.12.0"
     
-    // 图片
-    implementation "com.github.bumptech.glide:glide:4.16.0"
-    
     // 相机
-    implementation "androidx.camera:camera-camera2:1.3.0"
-    implementation "androidx.camera:camera-lifecycle:1.3.0"
-    implementation "androidx.camera:camera-view:1.3.0"
+    implementation "androidx.camera:camera-camera2:1.3.1"
+    implementation "androidx.camera:camera-lifecycle:1.3.1"
+    implementation "androidx.camera:camera-view:1.3.1"
     
-    // 数据库
-    implementation "androidx.room:room-runtime:2.6.0"
-    implementation "androidx.room:room-ktx:2.6.0"
-    kapt "androidx.room:room-compiler:2.6.0"
+    // 图片处理
+    implementation "io.coil-kt:coil-compose:2.5.0"
     
-    // Jetpack
-    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2"
-    implementation "androidx.lifecycle:lifecycle-livedata-ktx:2.6.2"
+    // DataStore（配置存储）
+    implementation "androidx.datastore:datastore-preferences:1.0.0"
     
-    // Markdown 渲染
-    implementation "io.noties.markwon:core:4.6.2"
-    implementation "io.noties.markwon:ext-latex:4.6.2"
+    // 权限请求
+    implementation "com.google.accompanist:accompanist-permissions:0.34.0"
 }
 ```
+
+### 暂不引入（后续版本）
+- Room 数据库（MVP 不做历史记录）
+- Markdown/LaTeX 渲染（MVP 纯文本展示）
+- Hilt/Koin 依赖注入（项目规模小，手动注入即可）
 
 ## Prompt 策略
 
@@ -160,7 +199,33 @@ dependencies {
 如果图片模糊或无法识别题目，请明确说明。
 ```
 
-## 开发规范
+## MVP 开发计划
+
+### 第一阶段：项目初始化
+- [x] Git 仓库初始化
+- [x] 技术架构确定
+- [ ] Android 项目骨架（build.gradle、AndroidManifest）
+- [ ] Compose 导航结构
+
+### 第二阶段：核心功能
+- [ ] 设置页面（API 配置界面 + DataStore 存储）
+- [ ] 相机模块（CameraX 拍照 + 相册选图）
+- [ ] 图片处理（压缩 + Base64 编码）
+- [ ] API 调用（Retrofit + OpenAI 接口）
+- [ ] 答案展示（纯文本 + 复制功能）
+
+### 第三阶段：完善体验
+- [ ] 加载状态与错误处理
+- [ ] 暗色模式适配
+- [ ] 权限请求优化
+- [ ] 基础 UI 打磨
+
+### MVP 不包含的功能（v2.0 规划）
+- 历史记录（Room 数据库）
+- LaTeX 公式渲染
+- Markdown 富文本
+- 答案缓存
+- 多轮对话
 
 ### 命名约定
 - Activity/Fragment：`XxxActivity`, `XxxFragment`
