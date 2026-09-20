@@ -20,6 +20,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.lilinth.questionsolver.ui.component.MarkdownRenderer
 import com.lilinth.questionsolver.ui.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,6 +33,7 @@ fun MainScreen(
     val selectedImageUri by viewModel.selectedImageUri.collectAsState()
     val answer by viewModel.answer.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val isStreaming by viewModel.isStreaming.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -116,22 +118,28 @@ fun MainScreen(
                     },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(999.dp),
-                    enabled = !isLoading
+                    enabled = !isLoading && !isStreaming
                 ) {
                     Text("选择图片")
                 }
 
                 Button(
-                    onClick = { viewModel.solveQuestion() },
+                    onClick = { viewModel.solveQuestionStream() },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(999.dp),
-                    enabled = !isLoading && selectedImageUri != null && apiConfig.isValid()
+                    enabled = !isLoading && !isStreaming && selectedImageUri != null && apiConfig.isValid()
                 ) {
-                    Text(if (isLoading) "解答中..." else "开始解答")
+                    Text(
+                        when {
+                            isStreaming -> "解答中..."
+                            isLoading -> "加载中..."
+                            else -> "开始解答"
+                        }
+                    )
                 }
             }
 
-            if (isLoading) {
+            if (isLoading && !isStreaming) {
                 CircularProgressIndicator()
             }
 
@@ -150,7 +158,7 @@ fun MainScreen(
                 }
             }
 
-            answer?.let { answerText ->
+            if (answer.isNotEmpty()) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -161,15 +169,29 @@ fun MainScreen(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = "答案",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = answerText,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "答案",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            if (isStreaming) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                        }
+
+                        MarkdownRenderer(
+                            content = answer,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 100.dp, max = 600.dp)
                         )
                     }
                 }

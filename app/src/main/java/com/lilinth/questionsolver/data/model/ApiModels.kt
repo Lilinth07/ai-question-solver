@@ -16,7 +16,10 @@ data class ChatRequest(
     val maxTokens: Int = 2048,
 
     @SerializedName("temperature")
-    val temperature: Double = 0.7
+    val temperature: Double = 0.7,
+
+    @SerializedName("stream")
+    val stream: Boolean = false
 )
 
 data class Message(
@@ -80,4 +83,43 @@ data class ResponseMessage(
 
     @SerializedName("content")
     val content: String
+)
+
+/**
+ * 流式响应模型（SSE）
+ */
+data class StreamResponse(
+    @SerializedName("id")
+    val id: String? = null,
+
+    @SerializedName("object")
+    val objectType: String? = null,
+
+    @SerializedName("created")
+    val created: Long? = null,
+
+    @SerializedName("model")
+    val model: String? = null,
+
+    @SerializedName("choices")
+    val choices: List<StreamChoice>? = null
+)
+
+data class StreamChoice(
+    @SerializedName("index")
+    val index: Int,
+
+    @SerializedName("delta")
+    val delta: Delta,
+
+    @SerializedName("finish_reason")
+    val finishReason: String? = null
+)
+
+data class Delta(
+    @SerializedName("role")
+    val role: String? = null,
+
+    @SerializedName("content")
+    val content: String? = null
 )

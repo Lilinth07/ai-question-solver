@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
 ---
 
@@ -14,12 +14,10 @@ Android 原生应用，通过拍照识别题目并调用多模态大模型进行
 
 ### 构建与运行
 ```bash
-# Windows 使用 gradlew.bat，Linux/Mac 使用 ./gradlew
-
 # 构建 Debug APK
 ./gradlew assembleDebug
 
-# 构建 Release APK（需要配置签名）
+# 构建 Release APK
 ./gradlew assembleRelease
 
 # 安装到设备/模拟器
@@ -31,12 +29,10 @@ Android 原生应用，通过拍照识别题目并调用多模态大模型进行
 
 ### 测试
 ```bash
-# 注意：项目当前无测试文件（MVP 阶段），以下命令在添加测试后可用
-
 # 运行单元测试
 ./gradlew test
 
-# 运行 UI 测试（需要连接设备或模拟器）
+# 运行 UI 测试
 ./gradlew connectedAndroidTest
 
 # 运行特定测试
@@ -59,26 +55,19 @@ Android 原生应用，通过拍照识别题目并调用多模态大模型进行
 **技术栈**：
 - Kotlin 原生开发
 - OpenAI 标准接口（支持任意兼容的多模态模型）
-- Retrofit + OkHttp（网络请求，支持 SSE 流式）
+- Retrofit + OkHttp（网络请求）
 - DataStore Preferences（配置持久化）
 - Jetpack Compose（UI 框架）
 - Coil（图片加载）
 - ExifInterface（图片旋转处理）
-- WebView + Marked.js + KaTeX（Markdown + LaTeX 渲染）
 
-**当前状态（MVP 已完成）**：
+**当前状态（MVP）**：
 - ✅ 相册选图（通过 Photo Picker）
 - ✅ API 配置管理（Base URL + API Key + Model）
-- ✅ 流式 API 调用（SSE 流式输出）
-- ✅ Markdown + LaTeX 混合渲染（WebView + Marked.js + KaTeX）
-- ✅ 逐字流式显示答案
-- ✅ 图片 EXIF 旋转处理
-- ✅ Material 3 主题
+- ✅ API 调用与答案展示
 - ❌ 相机拍照（待实现）
 - ❌ 历史记录（待实现）
-
-**API 兼容性**：
-支持任何 OpenAI 兼容格式的 API，包括 OpenAI GPT-4V、Azure OpenAI、Claude（通过转换）、国内大模型平台（智谱、百度等）
+- ❌ LaTeX 渲染（待实现）
 
 ## 架构设计
 
@@ -93,11 +82,11 @@ Android 原生应用，通过拍照识别题目并调用多模态大模型进行
 app/src/main/java/com/lilinth/questionsolver/
 ├── data/
 │   ├── api/
-│   │   ├── ApiService.kt           # Retrofit 接口定义（支持流式和非流式）
+│   │   ├── ApiService.kt           # Retrofit 接口定义
 │   │   ├── RetrofitClient.kt       # 动态创建 Retrofit 实例
-│   │   └── model/                  # API 数据模型（ChatRequest/ChatResponse/StreamResponse）
+│   │   └── model/                  # API 数据模型（ChatRequest/ChatResponse）
 │   ├── repository/
-│   │   ├── QuestionRepository.kt   # 题目解答仓库（流式 + 非流式）
+│   │   ├── QuestionRepository.kt   # 题目解答仓库
 │   │   ├── ConfigRepository.kt     # 配置仓库
 │   │   └── SettingsRepository.kt   
 │   ├── model/                      # 数据模型（ApiConfig/ApiModels）
@@ -105,12 +94,10 @@ app/src/main/java/com/lilinth/questionsolver/
 │       └── PreferencesManager.kt   # DataStore 配置管理
 ├── ui/
 │   ├── screen/
-│   │   ├── MainScreen.kt           # 主界面（选图+解答+流式显示）
+│   │   ├── MainScreen.kt           # 主界面（选图+解答）
 │   │   └── SettingsScreen.kt       # 设置界面
-│   ├── component/
-│   │   └── MarkdownRenderer.kt     # Markdown + LaTeX 渲染组件
 │   ├── viewmodel/
-│   │   ├── MainViewModel.kt        # 主界面 ViewModel（支持流式）
+│   │   ├── MainViewModel.kt        # 主界面 ViewModel
 │   │   └── SettingsViewModel.kt    # 设置 ViewModel
 │   ├── navigation/
 │   │   └── Screen.kt               # 导航定义
@@ -119,9 +106,6 @@ app/src/main/java/com/lilinth/questionsolver/
 │   ├── ImageUtil.kt                # 图片压缩/Base64 编码
 │   └── ImageUtils.kt               
 └── MainActivity.kt                 # Compose 导航根节点
-
-app/src/main/assets/
-└── markdown_template.html          # Markdown + LaTeX 渲染模板
 ```
 
 ### 关键架构点
@@ -129,33 +113,16 @@ app/src/main/assets/
 **动态 Retrofit 客户端**  
 `RetrofitClient.createApiService(baseUrl, apiKey)` 根据用户配置动态创建 API 实例，支持任意 OpenAI 兼容端点。
 
-**流式输出架构**  
-1. **SSE 流式解析**：`QuestionRepository.solveQuestionStream()` 使用 OkHttp 的 `ResponseBody.source()` 逐行读取 SSE 数据流
-2. **逐字渲染**：通过 `Flow<String>` 将每个 chunk 发送到 UI 层，实现实时显示
-3. **状态管理**：`isStreaming` 状态区分流式加载和普通加载
-
-**Markdown + LaTeX 渲染**  
-- 使用 WebView 加载本地 HTML 模板（`assets/markdown_template.html`）
-- Marked.js 解析 Markdown 语法
-- KaTeX 渲染 LaTeX 公式（支持行内 `$...$` 和块级 `$$...$$`）
-- JavaScript Bridge 实现 Compose ↔ WebView 双向通信
-- 自动适配深色/浅色主题
-
-**数据流（流式模式）**  
+**数据流**  
 1. 用户在 `SettingsScreen` 配置 API（保存到 DataStore）
 2. `MainScreen` 通过 Photo Picker 选择图片
-3. `MainViewModel.solveQuestionStream()` 触发流式解答：
+3. `MainViewModel.solveQuestion()` 触发解答流程：
    - 读取图片 URI → 转换为 ByteArray
    - `ImageUtil` 压缩并 Base64 编码
-   - `QuestionRepository` 构建 OpenAI Vision API 请求（`stream: true`）
-   - 使用 OkHttp 发送请求并逐行读取 SSE 流
-   - 解析每个 `data: {...}` 块中的 `delta.content`
-   - 通过 Flow 将文本片段发送到 ViewModel
-   - `MarkdownRenderer` 实时渲染累积的 Markdown 内容
-   - 更新 UI 状态（流式答案/错误/流式中）
-
-**数据流（非流式模式，备用）**  
-`MainViewModel.solveQuestion()` 提供传统的一次性返回模式，适合不支持流式的 API。
+   - `QuestionRepository` 构建 OpenAI Vision API 请求
+   - `RetrofitClient` 发送请求
+   - 解析 `response.choices[0].message.content`
+   - 更新 UI 状态（答案/错误/加载中）
 
 **配置管理**  
 使用 DataStore Preferences 持久化：
@@ -167,7 +134,7 @@ app/src/main/assets/
 
 ## API 设计
 
-### OpenAI 兼容接口格式（流式）
+### OpenAI 兼容接口格式
 ```kotlin
 POST {base_url}/v1/chat/completions
 Headers:
@@ -177,7 +144,6 @@ Headers:
 Body:
 {
   "model": "gpt-4-vision-preview",
-  "stream": true,  // 启用流式输出
   "messages": [
     {
       "role": "user",
@@ -196,18 +162,9 @@ Body:
     }
   ]
 }
-
-Response (SSE 流式):
-data: {"choices":[{"delta":{"content":"这"}}]}
-data: {"choices":[{"delta":{"content":"道"}}]}
-data: {"choices":[{"delta":{"content":"题"}}]}
-...
-data: [DONE]
 ```
 
-**实现位置**：
-- 流式：`QuestionRepository.solveQuestionStream()` - 推荐
-- 非流式：`QuestionRepository.solveQuestion()` - 备用
+**实现位置**：`QuestionRepository.solveQuestion()`
 
 ### 配置管理
 - **base_url**：API 端点（必须以 `/` 结尾）
@@ -223,35 +180,11 @@ data: [DONE]
 - 压缩到合理大小（平衡清晰度和 API 传输）
 - Base64 编码为 `data:image/jpeg;base64,...` 格式
 
-### 流式输出处理（`QuestionRepository.kt`）
-- 使用 OkHttp 的 `ResponseBody.source()` 逐行读取 SSE 流
-- 解析 `data: {...}` 格式的 JSON 块
-- 提取 `choices[0].delta.content` 字段
-- 通过 Kotlin Flow 发送文本片段到 UI 层
-- 处理 `data: [DONE]` 结束标记
-- 异常处理和流清理
-
-### Markdown + LaTeX 渲染（`MarkdownRenderer.kt`）
-- WebView 加载本地 HTML 模板（`assets/markdown_template.html`）
-- Marked.js 解析 Markdown（标题、列表、代码块、粗体、斜体等）
-- KaTeX 渲染 LaTeX 公式：
-  - 行内公式：`$E=mc^2$`
-  - 块级公式：`$$\int_0^\infty e^{-x^2}dx$$`
-- JavaScript Bridge 实现内容更新：
-  - `updateContent(markdown)` - 更新显示内容
-  - `setTheme(isDark)` - 切换深色/浅色主题
-- Material 3 配色自动适配
-- 流式更新时实时渲染
-
 ### 答案展示（`MainScreen.kt`）
-- MarkdownRenderer 组件展示富文本答案
-- 流式输出时显示小型 ProgressIndicator
+- 当前为纯文本展示（Material 3 Card）
 - 支持加载状态（CircularProgressIndicator）
 - 错误提示（errorContainer 配色）
-- 状态管理通过 StateFlow：
-  - `answer: StateFlow<String>` - 累积的答案文本
-  - `isStreaming: StateFlow<Boolean>` - 是否正在流式输出
-  - `isLoading: StateFlow<Boolean>` - 是否正在加载
+- 状态管理通过 StateFlow
 
 ### 配置验证
 `ApiConfig.isValid()` 检查：
@@ -263,7 +196,6 @@ data: [DONE]
 - **READ_MEDIA_IMAGES**（Android 13+）
 - **READ_EXTERNAL_STORAGE**（Android 12 及以下）
 - Photo Picker 自动处理权限请求（`ActivityResultContracts.PickVisualMedia`）
-- **INTERNET** 权限（网络请求）
 
 ## 技术选型细节
 
@@ -311,40 +243,6 @@ data: [DONE]
 - `docs`: 文档
 - `style`: 格式调整
 
-## 重要注意事项
-
-### Gradle Wrapper
-- Windows 使用 `gradlew.bat`，Linux/Mac 使用 `./gradlew`
-- 项目已配置 Gradle 8.9 Wrapper，无需单独安装 Gradle
-
-### 图片处理关键点
-- **EXIF 方向处理**：使用 ExifInterface 自动处理图片旋转，确保上传到 API 的图片方向正确
-- **压缩策略**：在 `ImageUtil.kt` 中平衡图片清晰度和传输大小
-- **Base64 编码**：生成的格式必须是 `data:image/jpeg;base64,...`（OpenAI Vision API 要求）
-
-### Retrofit 动态配置
-- `baseUrl` 必须以 `/` 结尾（Retrofit 规范）
-- 用户修改配置后需要重新创建 `ApiService` 实例（通过 `RetrofitClient.createApiService()`）
-- 配置验证通过 `ApiConfig.isValid()` 在 UI 层完成
-
-### 流式输出关键点
-- **SSE 格式解析**：每行格式为 `data: {...}`，需要手动解析 JSON
-- **Flow 背压处理**：使用 `flow { emit() }` 逐个发送文本片段
-- **错误处理**：流式输出中断时需要捕获异常并关闭资源
-- **结束标记**：遇到 `data: [DONE]` 时正常结束流
-
-### WebView 渲染关键点
-- **HTML 模板位置**：`app/src/main/assets/markdown_template.html`
-- **JavaScript Bridge**：通过 `evaluateJavascript()` 调用 JS 函数更新内容
-- **主题切换**：监听系统主题变化，通过 `setTheme(isDark)` 同步
-- **LaTeX 语法**：行内用单 `$`，块级用双 `$$`，KaTeX 自动渲染
-- **性能优化**：流式更新时避免频繁刷新，可以批量更新（如每 50ms）
-
-### DataStore 使用
-- 配置键名：`base_url`、`api_key`、`model_name`
-- 异步读写（使用协程 `Flow`）
-- 不要在主线程阻塞读取
-
 ## CI/CD
 
 项目使用 GitHub Actions 自动构建（`.github/workflows/build.yml`）：
@@ -357,12 +255,13 @@ data: [DONE]
 ### 计划中的功能
 - [ ] 相机拍照（CameraX）
 - [ ] 历史记录（Room 数据库）
+- [ ] LaTeX 公式渲染（WebView + KaTeX 或原生库）
+- [ ] Markdown 富文本展示
 - [ ] 答案复制功能
 - [ ] 深色/浅色主题切换
 - [ ] 答案缓存（相同题目复用结果）
 - [ ] 多轮对话（追问）
 - [ ] 图片裁剪功能
-- [ ] 流式输出性能优化（批量更新 WebView）
 
 ### 长期规划
 - [ ] 支持 iOS（考虑 Kotlin Multiplatform）
@@ -370,7 +269,6 @@ data: [DONE]
 - [ ] 错题本功能
 - [ ] 学科分类（数学、物理、化学等）
 - [ ] 离线 OCR（先识别文字再调用 API，降低成本）
-- [ ] 导出答案为 PDF/图片
 
 ## 安全性注意事项
 

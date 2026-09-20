@@ -27,10 +27,13 @@ data class Choice(
     val index: Int,
 
     @SerializedName("message")
-    val message: ResponseMessage,
+    val message: ResponseMessage? = null,
+
+    @SerializedName("delta")
+    val delta: Delta? = null,
 
     @SerializedName("finish_reason")
-    val finishReason: String
+    val finishReason: String? = null
 )
 
 data class ResponseMessage(
@@ -39,6 +42,14 @@ data class ResponseMessage(
 
     @SerializedName("content")
     val content: String
+)
+
+data class Delta(
+    @SerializedName("role")
+    val role: String? = null,
+
+    @SerializedName("content")
+    val content: String? = null
 )
 
 data class Usage(

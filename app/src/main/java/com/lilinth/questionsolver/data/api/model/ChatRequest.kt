@@ -13,7 +13,10 @@ data class ChatRequest(
     val maxTokens: Int = 1000,
 
     @SerializedName("temperature")
-    val temperature: Double = 0.7
+    val temperature: Double = 0.7,
+
+    @SerializedName("stream")
+    val stream: Boolean = false
 )
 
 data class Message(
