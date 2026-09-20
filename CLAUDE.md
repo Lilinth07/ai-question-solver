@@ -1,73 +1,149 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+---
+
 # AI 搜题 APP
 
 Android 原生应用，通过拍照识别题目并调用多模态大模型进行解答。
 
+**Package**: `com.lilinth.questionsolver`
+
+## 开发命令
+
+### 构建与运行
+```bash
+# Windows 使用 gradlew.bat，Linux/Mac 使用 ./gradlew
+
+# 构建 Debug APK
+./gradlew assembleDebug
+
+# 构建 Release APK（需要配置签名）
+./gradlew assembleRelease
+
+# 安装到设备/模拟器
+./gradlew installDebug
+
+# 清理构建
+./gradlew clean
+```
+
+### 测试
+```bash
+# 注意：项目当前无测试文件（MVP 阶段），以下命令在添加测试后可用
+
+# 运行单元测试
+./gradlew test
+
+# 运行 UI 测试（需要连接设备或模拟器）
+./gradlew connectedAndroidTest
+
+# 运行特定测试
+./gradlew test --tests "com.lilinth.questionsolver.SpecificTest"
+```
+
+### 代码检查
+```bash
+# Lint 检查
+./gradlew lint
+
+# 查看 Lint 报告
+./gradlew lintDebug
+```
+
 ## 项目概述
 
-**核心功能**：拍照/相册选图 → 图片处理 → OpenAI 兼容接口调用 → 解析答案展示
+**核心功能**：相册选图 → 图片 Base64 编码 → OpenAI 兼容接口调用 → 解析答案展示
 
 **技术栈**：
 - Kotlin 原生开发
 - OpenAI 标准接口（支持任意兼容的多模态模型）
-- CameraX（相机调用）
 - Retrofit + OkHttp（网络请求）
-- Room（本地数据库）
+- DataStore Preferences（配置持久化）
 - Jetpack Compose（UI 框架）
+- Coil（图片加载）
+- ExifInterface（图片旋转处理）
 
-**MVP 范围**：
-- 拍照/相册选图
-- API 调用与答案展示
-- 基础设置（API 配置）
-- 暂不包含：历史记录、LaTeX 渲染、离线缓存
+**当前状态（MVP 已完成）**：
+- ✅ 相册选图（通过 Photo Picker）
+- ✅ API 配置管理（Base URL + API Key + Model）
+- ✅ API 调用与答案展示
+- ✅ 图片 EXIF 旋转处理
+- ✅ Material 3 主题
+- ❌ 相机拍照（待实现）
+- ❌ 历史记录（待实现）
+- ❌ LaTeX 渲染（待实现）
+
+**API 兼容性**：
+支持任何 OpenAI 兼容格式的 API，包括 OpenAI GPT-4V、Azure OpenAI、Claude（通过转换）、国内大模型平台（智谱、百度等）
 
 ## 架构设计
 
-### MVP 架构
-采用 MVVM + Repository 模式：
-- **UI 层**：Jetpack Compose（声明式 UI，减少样板代码）
+### MVVM + Repository 模式
+- **UI 层**：Jetpack Compose（声明式 UI）
 - **ViewModel 层**：处理 UI 逻辑和状态管理
 - **Repository 层**：统一数据来源（API + 本地配置）
 - **Data 层**：Retrofit API + DataStore（配置持久化）
 
-### 模块划分（MVP 精简版）
+### 实际模块结构
 ```
-app/
+app/src/main/java/com/lilinth/questionsolver/
 ├── data/
 │   ├── api/
-│   │   ├── OpenAIApi.kt              # Retrofit 接口定义
-│   │   └── model/                     # API 请求/响应模型
+│   │   ├── ApiService.kt           # Retrofit 接口定义
+│   │   ├── RetrofitClient.kt       # 动态创建 Retrofit 实例
+│   │   └── model/                  # API 数据模型（ChatRequest/ChatResponse）
 │   ├── repository/
-│   │   ├── QuestionRepository.kt     # 题目解答仓库
-│   │   └── SettingsRepository.kt     # 配置仓库
-│   └── local/
-│       └── UserPreferences.kt        # DataStore 配置
+│   │   ├── QuestionRepository.kt   # 题目解答仓库
+│   │   ├── ConfigRepository.kt     # 配置仓库
+│   │   └── SettingsRepository.kt   
+│   ├── model/                      # 数据模型（ApiConfig/ApiModels）
+│   └── preferences/
+│       └── PreferencesManager.kt   # DataStore 配置管理
 ├── ui/
-│   ├── camera/
-│   │   ├── CameraScreen.kt           # 拍照界面
-│   │   └── CameraViewModel.kt
-│   ├── answer/
-│   │   ├── AnswerScreen.kt           # 答案展示
-│   │   └── AnswerViewModel.kt
-│   └── settings/
-│       ├── SettingsScreen.kt         # API 配置
-│       └── SettingsViewModel.kt
+│   ├── screen/
+│   │   ├── MainScreen.kt           # 主界面（选图+解答）
+│   │   └── SettingsScreen.kt       # 设置界面
+│   ├── viewmodel/
+│   │   ├── MainViewModel.kt        # 主界面 ViewModel
+│   │   └── SettingsViewModel.kt    # 设置 ViewModel
+│   ├── navigation/
+│   │   └── Screen.kt               # 导航定义
+│   └── theme/                      # Material 3 主题配置
 ├── util/
-│   ├── ImageProcessor.kt             # 图片压缩/Base64
-│   └── NetworkResult.kt              # 网络结果封装
-└── MainActivity.kt                    # Compose 导航
+│   ├── ImageUtil.kt                # 图片压缩/Base64 编码
+│   └── ImageUtils.kt               
+└── MainActivity.kt                 # Compose 导航根节点
 ```
 
-### 数据流
-1. **拍照/选图** → ImageProcessor 压缩裁剪
-2. **编码** → Base64 + data URI scheme
-3. **构建请求** → OpenAI Vision API 格式
-4. **发送** → Retrofit 动态 base URL + API Key
-5. **解析** → 提取答案文本，LaTeX 公式渲染
-6. **存储** → Room 保存历史记录
+### 关键架构点
+
+**动态 Retrofit 客户端**  
+`RetrofitClient.createApiService(baseUrl, apiKey)` 根据用户配置动态创建 API 实例，支持任意 OpenAI 兼容端点。
+
+**数据流**  
+1. 用户在 `SettingsScreen` 配置 API（保存到 DataStore）
+2. `MainScreen` 通过 Photo Picker 选择图片
+3. `MainViewModel.solveQuestion()` 触发解答流程：
+   - 读取图片 URI → 转换为 ByteArray
+   - `ImageUtil` 压缩并 Base64 编码
+   - `QuestionRepository` 构建 OpenAI Vision API 请求
+   - `RetrofitClient` 发送请求
+   - 解析 `response.choices[0].message.content`
+   - 更新 UI 状态（答案/错误/加载中）
+
+**配置管理**  
+使用 DataStore Preferences 持久化：
+- `base_url`: API 端点（如 `https://api.openai.com/`）
+- `api_key`: 用户密钥
+- `model_name`: 模型名称（如 `gpt-4-vision-preview`）
+
+注意：`baseUrl` 必须以 `/` 结尾（Retrofit 要求）
 
 ## API 设计
 
-### OpenAI 兼容接口
+### OpenAI 兼容接口格式
 ```kotlin
 POST {base_url}/v1/chat/completions
 Headers:
@@ -79,15 +155,11 @@ Body:
   "model": "gpt-4-vision-preview",
   "messages": [
     {
-      "role": "system",
-      "content": "你是一个专业的解题助手..."
-    },
-    {
       "role": "user",
       "content": [
         {
           "type": "text",
-          "text": "请解答这道题目"
+          "text": "请仔细分析这道题目，并给出详细的解答过程和最终答案。"
         },
         {
           "type": "image_url",
@@ -97,168 +169,140 @@ Body:
         }
       ]
     }
-  ],
-  "max_tokens": 1000
+  ]
 }
 ```
 
-### 配置存储
-- **base_url**：API 端点（默认 `https://api.openai.com`）
+**实现位置**：`QuestionRepository.solveQuestion()`
+
+### 配置管理
+- **base_url**：API 端点（必须以 `/` 结尾）
 - **api_key**：用户自带密钥
-- **model**：模型名称（`gpt-4-vision-preview`, `claude-3-opus-20240229` 等）
-- 使用 SharedPreferences 或 DataStore 持久化
+- **model_name**：模型名称
+- **存储方式**：DataStore Preferences（通过 `PreferencesManager`）
 
 ## 核心功能实现要点
 
-### 1. 图片处理
-- 压缩到 ≤ 2MB（平衡清晰度和 API 成本）
-- 支持旋转校正
-- 可选裁剪框（提高识别准确率）
-- Base64 编码
+### 图片处理（`util/ImageUtil.kt`）
+- 从 URI 读取图片并转换为 ByteArray
+- 使用 ExifInterface 处理 EXIF 旋转信息
+- 压缩到合理大小（平衡清晰度和 API 传输）
+- Base64 编码为 `data:image/jpeg;base64,...` 格式
 
-### 2. 答案展示
-- Markdown 渲染（支持代码块、列表等）
-- LaTeX 公式渲染（WebView + MathJax/KaTeX 或原生库）
-- 步骤分解展示
-- 支持复制答案
+### 答案展示（`MainScreen.kt`）
+- 当前为纯文本展示（Material 3 Card）
+- 支持加载状态（CircularProgressIndicator）
+- 错误提示（errorContainer 配色）
+- 状态管理通过 StateFlow
 
-### 3. 用户体验（MVP 简化版）
-- 加载动画（API 调用需要几秒）
-- 错误处理：网络超时、API 密钥无效、余额不足等
-- 离线提示
-- 暗色模式适配
+### 配置验证
+`ApiConfig.isValid()` 检查：
+- baseUrl 非空且以 `/` 结尾
+- apiKey 非空
+- modelName 非空
 
-## MVP 开发计划
+### 权限处理
+- **READ_MEDIA_IMAGES**（Android 13+）
+- **READ_EXTERNAL_STORAGE**（Android 12 及以下）
+- Photo Picker 自动处理权限请求（`ActivityResultContracts.PickVisualMedia`）
 
 ## 技术选型细节
 
-### 最低 Android 版本
-- **minSdk**: 24 (Android 7.0) - 覆盖 95%+ 设备
-- **targetSdk**: 34 (Android 14)
-- **compileSdk**: 34
+### Android 版本
+- **minSdk**: 24 (Android 7.0)
+- **targetSdk**: 35 (Android 15)
+- **compileSdk**: 35
 
-### 核心依赖库（MVP 版本）
+### 核心依赖（Version Catalog）
+使用 `libs.versions.toml` 管理依赖版本。
 
-```gradle
-dependencies {
-    // Kotlin
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.22"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
-    
-    // Jetpack Compose
-    implementation platform("androidx.compose:compose-bom:2024.02.00")
-    implementation "androidx.compose.ui:ui"
-    implementation "androidx.compose.ui:ui-tooling-preview"
-    implementation "androidx.compose.material3:material3"
-    implementation "androidx.activity:activity-compose:1.8.2"
-    implementation "androidx.navigation:navigation-compose:2.7.6"
-    
-    // ViewModel & Lifecycle
-    implementation "androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0"
-    implementation "androidx.lifecycle:lifecycle-runtime-compose:2.7.0"
-    
-    // 网络
-    implementation "com.squareup.retrofit2:retrofit:2.9.0"
-    implementation "com.squareup.retrofit2:converter-gson:2.9.0"
-    implementation "com.squareup.okhttp3:logging-interceptor:4.12.0"
-    
-    // 相机
-    implementation "androidx.camera:camera-camera2:1.3.1"
-    implementation "androidx.camera:camera-lifecycle:1.3.1"
-    implementation "androidx.camera:camera-view:1.3.1"
-    
-    // 图片处理
-    implementation "io.coil-kt:coil-compose:2.5.0"
-    
-    // DataStore（配置存储）
-    implementation "androidx.datastore:datastore-preferences:1.0.0"
-    
-    // 权限请求
-    implementation "com.google.accompanist:accompanist-permissions:0.34.0"
-}
-```
+关键库：
+- Jetpack Compose BOM
+- Retrofit 2.9.0 + Gson Converter
+- OkHttp Logging Interceptor
+- Coil Compose（图片加载）
+- DataStore Preferences
+- ExifInterface 1.3.7（处理图片旋转）
 
-### 暂不引入（后续版本）
-- Room 数据库（MVP 不做历史记录）
-- Markdown/LaTeX 渲染（MVP 纯文本展示）
-- Hilt/Koin 依赖注入（项目规模小，手动注入即可）
+### Gradle 配置
+- **JVM Target**: Java 11
+- **Kotlin**: 使用官方代码风格（`kotlin.code.style=official`）
+- **构建工具**: Gradle 8.9 + Wrapper
 
-## Prompt 策略
-
-系统提示词模板：
-```
-你是一个专业的解题助手。请分析图片中的题目并给出详细解答。
-
-要求：
-1. 首先识别并复述题目内容
-2. 给出详细的解题步骤
-3. 解释每一步的原理和依据
-4. 数学公式使用 LaTeX 格式（用 $ 或 $$ 包裹）
-5. 最终答案用【答案】标记
-
-如果图片模糊或无法识别题目，请明确说明。
-```
-
-## MVP 开发计划
-
-### 第一阶段：项目初始化
-- [x] Git 仓库初始化
-- [x] 技术架构确定
-- [ ] Android 项目骨架（build.gradle、AndroidManifest）
-- [ ] Compose 导航结构
-
-### 第二阶段：核心功能
-- [ ] 设置页面（API 配置界面 + DataStore 存储）
-- [ ] 相机模块（CameraX 拍照 + 相册选图）
-- [ ] 图片处理（压缩 + Base64 编码）
-- [ ] API 调用（Retrofit + OpenAI 接口）
-- [ ] 答案展示（纯文本 + 复制功能）
-
-### 第三阶段：完善体验
-- [ ] 加载状态与错误处理
-- [ ] 暗色模式适配
-- [ ] 权限请求优化
-- [ ] 基础 UI 打磨
-
-### MVP 不包含的功能（v2.0 规划）
-- 历史记录（Room 数据库）
-- LaTeX 公式渲染
-- Markdown 富文本
-- 答案缓存
-- 多轮对话
+## 开发规范
 
 ### 命名约定
-- Activity/Fragment：`XxxActivity`, `XxxFragment`
-- ViewModel：`XxxViewModel`
-- Repository：`XxxRepository`
-- API 接口：`XxxApi`
+- Activity: `XxxActivity`
+- ViewModel: `XxxViewModel`
+- Repository: `XxxRepository`
+- API 接口: `XxxService`
+- Compose Screen: `XxxScreen`
 
 ### 代码风格
 - 遵循 Kotlin 官方编码规范
-- 使用协程处理异步操作
+- 使用协程处理异步操作（`suspend` 函数）
 - MVVM 架构模式
+- StateFlow 管理 UI 状态
 - 单一职责原则
 
-### Git 提交
-- feat: 新功能
-- fix: 修复
-- refactor: 重构
-- docs: 文档
-- style: 格式调整
+### Git 提交规范
+- `feat`: 新功能
+- `fix`: 修复
+- `refactor`: 重构
+- `docs`: 文档
+- `style`: 格式调整
+
+## 重要注意事项
+
+### Gradle Wrapper
+- Windows 使用 `gradlew.bat`，Linux/Mac 使用 `./gradlew`
+- 项目已配置 Gradle 8.9 Wrapper，无需单独安装 Gradle
+
+### 图片处理关键点
+- **EXIF 方向处理**：使用 ExifInterface 自动处理图片旋转，确保上传到 API 的图片方向正确
+- **压缩策略**：在 `ImageUtil.kt` 中平衡图片清晰度和传输大小
+- **Base64 编码**：生成的格式必须是 `data:image/jpeg;base64,...`（OpenAI Vision API 要求）
+
+### Retrofit 动态配置
+- `baseUrl` 必须以 `/` 结尾（Retrofit 规范）
+- 用户修改配置后需要重新创建 `ApiService` 实例（通过 `RetrofitClient.createApiService()`）
+- 配置验证通过 `ApiConfig.isValid()` 在 UI 层完成
+
+### DataStore 使用
+- 配置键名：`base_url`、`api_key`、`model_name`
+- 异步读写（使用协程 `Flow`）
+- 不要在主线程阻塞读取
+
+## CI/CD
+
+项目使用 GitHub Actions 自动构建（`.github/workflows/build.yml`）：
+- 推送到 `master` 分支时触发
+- 构建 Debug APK 并上传为 Artifact
+- 打 tag 时自动创建 Release
 
 ## 后续扩展方向
 
-- [ ] 支持 iOS（考虑 Kotlin Multiplatform）
+### 计划中的功能
+- [ ] 相机拍照（CameraX）
+- [ ] 历史记录（Room 数据库）
+- [ ] LaTeX 公式渲染（WebView + KaTeX 或原生库）
+- [ ] Markdown 富文本展示
+- [ ] 答案复制功能
+- [ ] 深色/浅色主题切换
 - [ ] 答案缓存（相同题目复用结果）
 - [ ] 多轮对话（追问）
+- [ ] 图片裁剪功能
+
+### 长期规划
+- [ ] 支持 iOS（考虑 Kotlin Multiplatform）
 - [ ] 公式编辑器（手动输入题目）
 - [ ] 错题本功能
 - [ ] 学科分类（数学、物理、化学等）
 - [ ] 离线 OCR（先识别文字再调用 API，降低成本）
 
-## 安全性考虑
+## 安全性注意事项
 
-- API Key 加密存储（考虑 Android Keystore）
+- API Key 存储在 DataStore（考虑使用 Android Keystore 加密）
 - 图片不上传服务器（直接 base64 传给 API）
-- 历史记录支持删除
-- 网络请求证书校验
+- 网络请求使用 HTTPS（`usesCleartextTraffic` 仅用于开发）
+- 敏感信息不写入日志（生产环境应关闭 HttpLoggingInterceptor）
